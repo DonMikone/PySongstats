@@ -1,6 +1,6 @@
 [project]
 name = "python-songstats"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python client for Songstats API"
 authors = [
     { name = "Mike Kremer", email = "mike@royalflow.app" },
