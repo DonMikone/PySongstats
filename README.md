@@ -1,11 +1,11 @@
-# songstats-py
+# PySongstats
 
 Python client for Songstats API. Please note that this wrapper does not provide the API's entire functions.
 
 ## Installation
 
 ```bash
-pip install songstats-py
+pip install git+https://github.com/DonMikone/PySongstats.git@master
 ```
 
 ## Usage
