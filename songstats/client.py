@@ -2,7 +2,7 @@ import time
 from typing import Dict, Any, List, Optional
 import requests
 from .constants import BASE_URL_PROD, BASE_URL_TEST
-from .exceptions import error_map, APIError, RateLimitException
+from .exceptions import error_map, APIError, RateLimitException, ParameterError
 from .models import (
     TrackInfo, TrackStats, HistoricStats,
     ArtistInfo, Activity, AudioFeature, Link,
@@ -15,8 +15,13 @@ class TrackEndpoints:
         self.session = session
         self.base_url = base_url.rstrip('/')
 
-    def info(self, isrc: str) -> TrackInfo:
-        response = self._get("/tracks/info", {"isrc": isrc})
+    def info(self, isrc: str = None, spotify_id: str = None) -> TrackInfo:
+        if not isrc and not spotify_id:
+            raise ParameterError('At least one of isrc or spotify_id must be provided!')
+        if isrc:
+            response = self._get("/tracks/info", {"isrc": isrc})
+        else:
+            response = self._get("/tracks/info", {"spotify_track_id": spotify_id})
         data = response.json()
         return self._parse_track_info(data)
 
