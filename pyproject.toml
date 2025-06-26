@@ -3,7 +3,7 @@ name = "python-songstats"
 version = "0.1.0"
 description = "Python client for Songstats API"
 authors = [
-    { name = "Mike Kremer", email = "mikelsoft [at] gmail.com" },
+    { name = "Mike Kremer", email = "mike@royalflow.app" },
 ]
 readme = "README.md"
 requires-python = ">=3.8"
