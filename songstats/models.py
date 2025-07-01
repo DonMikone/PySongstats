@@ -1,19 +1,38 @@
+import logging
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any
+from datetime import timedelta
+from typing import Optional, List, Dict, Any, Union
 
 
 @dataclass
 class AudioFeature:
     key: str
-    value: float
+    value: Union[float, str, timedelta]
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'AudioFeature':
-        try:
-            value = float(data['value'])
-        except (ValueError, TypeError):
-            value = 0.0
-        return cls(key=data['key'], value=value)
+        key = key = str(data.get('key', ''))
+        raw_value = data.get('value')
+
+        if key == 'duration':
+            try:
+                minutes, seconds = map(int, raw_value.split(':'))
+                value = timedelta(minutes=minutes, seconds=seconds)
+            except (ValueError, AttributeError):
+                logging.warning(f"Invalid duration format: {raw_value}")
+                value = timedelta(0)
+
+        elif key == 'key':
+            value = str(raw_value) if raw_value is not None else ''
+
+        else:
+            try:
+                value = float(raw_value)
+            except (ValueError, TypeError):
+                logging.warning(f"Invalid float value for {key}: {raw_value}")
+                value = 0.0
+
+        return cls(key=key, value=value)
 
 
 @dataclass
