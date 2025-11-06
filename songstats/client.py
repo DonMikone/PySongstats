@@ -303,6 +303,226 @@ class StatusEndpoints:
             raise APIError.from_response(res)
 
 
+class CollaboratorEndpoints:
+    def __init__(self, session, base_url):
+        self.session = session
+        self.base_url = base_url.rstrip('/')
+
+    def top_tracks(
+            self,
+            songstats_collaborator_id: Optional[str] = None,
+            tidal_artist_id: Optional[str] = None,
+            limit: Optional[int] = None,
+            metric: Optional[str] = 'streams',
+            scope: Optional[str] = 'total',
+            source: Optional[str] = 'spotify',
+    ) -> Dict[str, Any]:
+        """
+        Retrieve top tracks for a collaborator.
+
+        Endpoint:
+            https://api.songstats.com/enterprise/v1/collaborators/top_tracks
+
+        Parameters:
+            songstats_collaborator_id (str, optional): Songstats collaborator ID
+            tidal_artist_id (str, optional): TIDAL artist ID
+            limit (int, optional): Number of results to return
+            metric (str, optional): Metric to use (e.g. 'playlists', 'streams', ...)
+            scope (str, optional): Scope for metric (e.g. 'total', 'daily', ...)
+            source (str, optional): Source (e.g. 'spotify', 'apple_music', ...)
+        """
+        if not songstats_collaborator_id and not tidal_artist_id:
+            raise ParameterError(
+                "At least one of 'songstats_collaborator_id' or 'tidal_artist_id' must be provided."
+            )
+
+        params: Dict[str, Any] = {}
+        if songstats_collaborator_id:
+            params["songstats_collaborator_id"] = songstats_collaborator_id
+        if tidal_artist_id:
+            params["tidal_artist_id"] = tidal_artist_id
+        if limit is not None:
+            params["limit"] = limit
+        if metric is not None:
+            params["metric"] = metric
+        if scope is not None:
+            params["scope"] = scope
+        if source is not None:
+            params["source"] = source
+
+        res = self._get("/collaborators/top_tracks", params)
+        data = res.json()
+
+        # Alle Track-Einträge aus data[*].top_tracks zu einer flachen Liste zusammenführen
+        flat_top_tracks = []
+        for entry in data.get("data", []):
+            for track in entry.get("top_tracks", []):
+                flat_top_tracks.append(track)
+
+        return {
+            "result": data.get("result"),
+            "message": data.get("message"),
+            "data": data.get("data", []),  # Originalstruktur beibehalten
+            "top_tracks": flat_top_tracks,
+            "collaborator_info": data.get("collaborator_info", {}),
+            "source_ids": data.get("source_ids", []),
+        }
+
+    def info(
+            self,
+            songstats_collaborator_id: Optional[str] = None,
+            tidal_artist_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Retrieve detailed info for a collaborator.
+
+        Endpoint:
+            https://api.songstats.com/enterprise/v1/collaborators/info
+
+        Parameters:
+            songstats_collaborator_id (str, optional): Songstats collaborator ID
+            tidal_artist_id (str, optional): TIDAL artist ID
+        """
+        if not songstats_collaborator_id and not tidal_artist_id:
+            raise ParameterError(
+                "At least one of 'songstats_collaborator_id' or 'tidal_artist_id' must be provided."
+            )
+
+        params: Dict[str, Any] = {}
+        if songstats_collaborator_id:
+            params["songstats_collaborator_id"] = songstats_collaborator_id
+        if tidal_artist_id:
+            params["tidal_artist_id"] = tidal_artist_id
+
+        res = self._get("/collaborators/info", params)
+        data = res.json()
+
+        return {
+            "result": data.get("result"),
+            "message": data.get("message"),
+            "collaborator_info": data.get("collaborator_info", {}),
+        }
+
+    def catalog(
+            self,
+            songstats_collaborator_id: Optional[str] = None,
+            tidal_artist_id: Optional[str] = None,
+            limit: Optional[int] = None,
+            offset: Optional[int] = None,
+            with_links: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Retrieve the catalog for a collaborator.
+
+        At least one of songstats_collaborator_id or tidal_artist_id must be provided.
+        """
+        if not songstats_collaborator_id and not tidal_artist_id:
+            raise ParameterError(
+                'At least one of songstats_collaborator_id or tidal_artist_id must be provided!'
+            )
+
+        params: Dict[str, Any] = {}
+        if songstats_collaborator_id:
+            params['songstats_collaborator_id'] = songstats_collaborator_id
+        if tidal_artist_id:
+            params['tidal_artist_id'] = tidal_artist_id
+        if limit is not None:
+            params['limit'] = limit
+        if offset is not None:
+            params['offset'] = offset
+        if with_links:
+            params['with_links'] = True
+
+        res = self._get("/collaborators/catalog", params)
+        data = res.json()
+
+        catalog_items: List[TrackInfo] = []
+        for item in data.get('catalog', []):
+            artists = [
+                ArtistInfo(
+                    name=artist['name'],
+                    songstats_artist_id=artist['songstats_artist_id'],
+                    avatar=artist.get('avatar'),
+                    site_url=artist.get('site_url')
+                ) for artist in item.get('artists', [])
+            ]
+
+            catalog_items.append(
+                TrackInfo(
+                    songstats_track_id=item['songstats_track_id'],
+                    title=item['title'],
+                    artists=artists,
+                    release_date=item.get('release_date'),
+                    avatar=item.get('avatar'),
+                    site_url=item.get('site_url'),
+                    labels=[],
+                    distributors=[],
+                    genres=[],
+                    links=[],
+                    collaborators=[],
+                    audio_features=[]
+                )
+            )
+
+        return {
+            'result': data.get('result'),
+            'message': data.get('message'),
+            'catalog': catalog_items,
+            'collaborator_info': data.get('collaborator_info', {}),
+            'tracks_total': data.get('tracks_total', 0),
+            'next_url': data.get('next_url')
+        }
+
+    def search(
+            self,
+            q: str,
+            limit: Optional[int] = None,
+            offset: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Search collaborators by name and return possible matches.
+
+        Endpoint:
+            https://api.songstats.com/enterprise/v1/collaborators/search
+
+        Parameters:
+            q (str): Search query (required)
+            limit (int, optional): Number of results to return
+            offset (int, optional): Offset for pagination
+        """
+        if not q or not q.strip():
+            raise ParameterError("Parameter 'q' (search query) is required.")
+
+        params: Dict[str, Any] = {"q": q.strip()}
+        if limit is not None:
+            params["limit"] = limit
+        if offset is not None:
+            params["offset"] = offset
+
+        res = self._get("/collaborators/search", params)
+        data = res.json()
+
+        return {
+            "result": data.get("result"),
+            "message": data.get("message"),
+            "results": data.get("results", []),
+        }
+
+    def _get(self, endpoint: str, params: Dict[str, Any]) -> requests.Response:
+        url = f"{self.base_url}{endpoint}"
+        for _ in range(3):
+            res = self.session.get(url, params=params)
+            if res.status_code == 200:
+                return res
+            elif res.status_code == 429:
+                time.sleep(2)
+            elif res.status_code in error_map:
+                raise error_map[res.status_code].from_response(res)
+            else:
+                raise APIError.from_response(res)
+        raise RateLimitException("Rate limit exceeded after retries.")
+
+
 class SongstatsClient:
     def __init__(self, api_key: Optional[str] = None, testing: bool = False):
         """
@@ -330,6 +550,7 @@ class SongstatsClient:
         self._track = TrackEndpoints(self.session, self.base_url)
         self._status = StatusEndpoints(self.session, self.base_url)
         self._artist = ArtistEndpoints(self.session, self.base_url)
+        self._collaborator = CollaboratorEndpoints(self.session, self.base_url)
 
     @property
     def track(self) -> TrackEndpoints:
@@ -342,3 +563,7 @@ class SongstatsClient:
     @property
     def artist(self) -> ArtistEndpoints:
         return self._artist
+
+    @property
+    def collaborator(self) -> CollaboratorEndpoints:
+        return self._collaborator

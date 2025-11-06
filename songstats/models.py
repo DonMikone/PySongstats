@@ -237,7 +237,7 @@ class TrackInfo:
     audio_features: List[AudioFeature] = field(default_factory=list)
 
     def __str__(self):
-        return f"{self.title} by {', '.join(str(a) for a in self.artists)}"
+        return f"{', '.join(str(a) for a in self.artists)} - {self.title}"
 
     def get_audio_feature(self, feature_name: str) -> Optional[float]:
         for feature in self.audio_features:
