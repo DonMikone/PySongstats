@@ -437,30 +437,44 @@ class CollaboratorEndpoints:
         data = res.json()
 
         catalog_items: List[TrackInfo] = []
+
         for item in data.get('catalog', []):
-            artists = [
-                ArtistInfo(
-                    name=artist['name'],
-                    songstats_artist_id=artist['songstats_artist_id'],
-                    avatar=artist.get('avatar'),
-                    site_url=artist.get('site_url')
-                ) for artist in item.get('artists', [])
-            ]
+            # Artists
+            artists: List[ArtistInfo] = []
+            for artist in item.get('artists', []):
+                artists.append(
+                    ArtistInfo(
+                        name=artist.get('name'),
+                        songstats_artist_id=artist.get('songstats_artist_id'),
+                        avatar=artist.get('avatar'),
+                        site_url=artist.get('site_url'),
+                    )
+                )
+
+            # ISRCs & weitere Felder direkt übernehmen
+            isrcs = item.get('isrcs', []) or []
+            labels = item.get('labels', []) or []
+            distributors = item.get('distributors', []) or []
+            genres = item.get('genres', []) or []
+            # In catalog request, no links are given, only pure ISRCs
+            links = [Link(isrc=i, external_id="", source="", url="") for i in isrcs]
+            collaborators = item.get('collaborators', []) or []
+            audio_features = item.get('audio_features', []) or []
 
             catalog_items.append(
                 TrackInfo(
-                    songstats_track_id=item['songstats_track_id'],
-                    title=item['title'],
+                    songstats_track_id=item.get('songstats_track_id'),
+                    title=item.get('title'),
                     artists=artists,
                     release_date=item.get('release_date'),
                     avatar=item.get('avatar'),
                     site_url=item.get('site_url'),
-                    labels=[],
-                    distributors=[],
-                    genres=[],
-                    links=[],
-                    collaborators=[],
-                    audio_features=[]
+                    labels=labels,
+                    distributors=distributors,
+                    genres=genres,
+                    links=links,
+                    collaborators=collaborators,
+                    audio_features=audio_features,
                 )
             )
 
@@ -470,7 +484,7 @@ class CollaboratorEndpoints:
             'catalog': catalog_items,
             'collaborator_info': data.get('collaborator_info', {}),
             'tracks_total': data.get('tracks_total', 0),
-            'next_url': data.get('next_url')
+            'next_url': data.get('next_url'),
         }
 
     def search(
