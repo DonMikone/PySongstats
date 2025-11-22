@@ -251,3 +251,7 @@ class TrackInfo:
             if link.isrc:
                 return link.isrc
         return None
+
+    @property
+    def isrcs(self) -> Optional[List[str]]:
+        return [l.isrc for l in self.links if l.isrc is not None]
